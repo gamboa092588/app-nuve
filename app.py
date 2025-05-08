@@ -1,20 +1,34 @@
+import bcrypt
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 from werkzeug.utils import secure_filename
 import os
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 MB
+@app.errorhandler(413)
+def limite_arquivo_excedido(e):
+    return "Arquivo muito grande. Limite de 20MB.", 413
 
 app = Flask(__name__)
 app.secret_key = 'chave_secreta_simples'
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = 'uploads'EXTENSOES_PERMITIDAS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip'}
+
+def arquivo_permitido(nome_arquivo):
+    return '.' in nome_arquivo and nome_arquivo.rsplit('.', 1)[1].lower() in EXTENSOES_PERMITIDAS
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Criar pasta de uploads se não existir
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
+if arquivo and arquivo_permitido(arquivo.filename):
+    nome_seguro = secure_filename(arquivo.filename)
+    caminho = os.path.join(UPLOAD_FOLDER, session['usuario'], nome_seguro)
+    arquivo.save(caminho)
+else:
+    return 'Tipo de arquivo não permitido.', 400
 # Usuários simulados (futuro: banco de dados)
-usuarios = {
-    'teste@email.com': '1234'
-}
+senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt())
+usuarios[email] = senha_hash
+
 
 @app.route('/')
 def index():
@@ -28,7 +42,7 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         senha = request.form['senha']
-        if email in usuarios and usuarios[email] == senha:
+       if email in usuarios and bcrypt.checkpw(senha.encode('utf-8'), usuarios[email]):
             session['usuario'] = email
             pasta_usuario = os.path.join(UPLOAD_FOLDER, email)
             if not os.path.exists(pasta_usuario):
